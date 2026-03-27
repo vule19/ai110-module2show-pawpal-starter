@@ -2,6 +2,10 @@
 
 ## 1. System Design
 
+users can enter basic owner 
+users can add pet info
+users can add/edit tasks (duration + priority at minimum)
+
 **a. Initial design**
 
 - Briefly describe your initial UML design.
