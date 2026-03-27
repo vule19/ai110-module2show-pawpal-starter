@@ -2,7 +2,7 @@
 
 ## 1. System Design
 
-users can enter basic owner 
+users can enter basic owner
 users can add pet info
 users can add/edit tasks (duration + priority at minimum)
 
@@ -31,13 +31,15 @@ Yes, the design changed in three ways after reviewing the initial skeleton:
 
 **a. Constraints and priorities**
 
-- What constraints does your scheduler consider (for example: time, priority, preferences)?
-- How did you decide which constraints mattered most?
+The scheduler considers two constraints: **time** (the owner's `available_minutes` for the day) and **task priority** (HIGH, MEDIUM, or LOW). Tasks are sorted highest priority first, and within the same priority level, shorter tasks are preferred so more tasks can fit into the available time.
+
+Time was treated as the hard constraint — a task simply cannot be scheduled if it doesn't fit in the remaining minutes. Priority was treated as the ordering rule — it determines which tasks get first access to that time budget. I decided these two mattered most because they directly reflect the scenario: a busy owner with limited time who still needs critical care tasks done no matter what.
 
 **b. Tradeoffs**
 
-- Describe one tradeoff your scheduler makes.
-- Why is that tradeoff reasonable for this scenario?
+The scheduler uses a **greedy algorithm** — it picks the best-looking task at each step without backtracking. This means it can miss an optimal combination: for example, one HIGH priority 60-minute task might block three MEDIUM priority 20-minute tasks that together would cover more of the pet's needs.
+
+This tradeoff is reasonable here because pet care tasks are not interchangeable — a high-priority medication task genuinely should take precedence over lower-priority enrichment activities, even if a smarter algorithm could technically fit more tasks in. Simplicity and predictability matter more than perfect optimization for a daily care planner.
 
 ---
 
@@ -45,13 +47,11 @@ Yes, the design changed in three ways after reviewing the initial skeleton:
 
 **a. How you used AI**
 
-- How did you use AI tools during this project (for example: design brainstorming, debugging, refactoring)?
-- What kinds of prompts or questions were most helpful?
+AI was used throughout the project for design brainstorming, code generation, and catching gaps in the system. The most useful prompts were specific and structural — for example, asking the AI to review the class skeleton for missing relationships or logic bottlenecks produced concrete, actionable findings (like the missing `get_all_tasks()` method and the unworkable string-based priority comparison). Asking AI to explain *why* a change was needed, not just what to change, helped build understanding rather than just copying output.
 
 **b. Judgment and verification**
 
-- Describe one moment where you did not accept an AI suggestion as-is.
-- How did you evaluate or verify what the AI suggested?
+When AI suggested adding `available_minutes` to `Schedule.__init__`, I did not accept this blindly — I traced through the scheduling flow manually to confirm that `get_schedule()` in `Owner` was the right place to pass that value, and that `Schedule` actually needed it to enforce `is_feasible` correctly against remaining time rather than total time. Verifying the data flow between `Owner`, `Schedule`, and `CareTask` prevented a subtle bug where feasibility would have been checked against the full budget instead of the shrinking remainder.
 
 ---
 
@@ -59,13 +59,15 @@ Yes, the design changed in three ways after reviewing the initial skeleton:
 
 **a. What you tested**
 
-- What behaviors did you test?
-- Why were these tests important?
+Two behaviors were tested:
+
+1. **Task completion** — that calling `mark_complete()` on a `CareTask` changes `completed` from `False` to `True`. This matters because if the flag doesn't flip, any future feature that filters completed tasks (e.g., skipping already-done tasks when regenerating a schedule) would silently break.
+
+2. **Task addition** — that calling `add_task()` on a `Pet` actually increases the pet's task count. This is the foundation of the whole system: if tasks aren't stored correctly, the scheduler has nothing to work with.
 
 **b. Confidence**
 
-- How confident are you that your scheduler works correctly?
-- What edge cases would you test next if you had more time?
+I'm confident the scheduler handles the normal case correctly — tasks are sorted by priority, fit-checked against remaining time, and added in order. The main edge cases I would test next given more time are: scheduling with zero available minutes (expect empty schedule), all tasks having the same priority (expect shortest-first ordering), and an owner with no pets (expect empty schedule without errors).
 
 ---
 
@@ -73,12 +75,12 @@ Yes, the design changed in three ways after reviewing the initial skeleton:
 
 **a. What went well**
 
-- What part of this project are you most satisfied with?
+The class design held up well throughout implementation. Starting from a UML diagram made it easy to catch structural problems — like the missing link between `Schedule` and the time budget — before writing any logic. The four-class split kept each file section focused and made the Streamlit integration straightforward, since `app.py` only needed to call `owner.get_schedule()` to get a result it could display.
 
 **b. What you would improve**
 
-- If you had another iteration, what would you improve or redesign?
+I would add a `time_of_day` or `start_time` field to `CareTask` so the schedule produces an actual timed plan (e.g., "Walk at 8:00 AM, feeding at 8:30 AM") rather than just an ordered list. I would also allow tasks to be marked as recurring or one-time, so the owner doesn't have to re-enter the same tasks every day.
 
 **c. Key takeaway**
 
-- What is one important thing you learned about designing systems or working with AI on this project?
+Designing the system on paper first — even just a rough class diagram — made every implementation step faster and more confident. Without the UML, I would have discovered the missing `get_all_tasks()` method and the `Priority` sorting problem only after writing broken code. Working with AI is most effective when you use it to stress-test a design you already understand, not as a substitute for understanding the design yourself.
